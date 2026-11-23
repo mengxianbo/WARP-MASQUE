@@ -16,7 +16,7 @@
 - 代理地址由用户手动添加到 PassWall。
 - 计划提供「有 WAN 口」和「无 WAN 口」两种网络出口配置模式。
 
-> **重要状态说明（请先阅读）**：当前已验证成功的是 x86_64 基础 IPK 打包流程。当前 Release 尚不能视为已经完成 LuCI 双模式界面、MASQUE 外层连接绕过 PassWall、WAN 出口绑定和回环防护的正式版本。上述网络隔离功能完成并通过实机测试前，不建议在承担主网络出口的生产路由器上启用。README 中的规划功能不代表当前二进制已经实现。
+> **重要状态说明（请先阅读）**：当前已验证成功的是 x86_64 基础 IPK 打包流程。当前最新源码已加入 LuCI 中文基础设置页和「有 WAN 口 / 无 WAN 口」选项，但该选项目前只保存配置；WAN 出口绑定、MASQUE 外层连接绕过 PassWall 和回环防护后端尚未完成。上述网络隔离功能完成并通过实机测试前，不建议在承担主网络出口的生产路由器上启用。
 
 ## 2. 当前构建支持范围
 
@@ -26,7 +26,7 @@
 | 软件包 | IPK |
 | MASQUE 客户端 | usque v1.5.0 |
 | SOCKS5 / HTTP CONNECT | 上游客户端支持；当前服务脚本已配置启动命令，仍需完成路由器实测 |
-| LuCI 中文界面 | 正在完善 |
+| LuCI 中文设置页 | 已加入基础配置页（出口模式选项、端口等） |
 | 有 WAN / 无 WAN 模式 | 设计已确定，正在实现 |
 | PassWall 自动联动 | 不会自动修改 PassWall |
 | PassWall 外层连接绕行 | 尚未完成验证，不得宣称已解决回环 |
@@ -38,7 +38,7 @@
 
 https://github.com/mengxianbo/WARP-MASQUE/releases
 
-当前基础构建资产（仅 x86_64）：
+当前已发布的基础构建资产（仅 x86_64；不包含后来提交的 LuCI 页面变更）：
 
 - [warp-masque_1.0.0-1_x86_64.ipk（build-3）](https://github.com/mengxianbo/WARP-MASQUE/releases/download/build-3/warp-masque_1.0.0-1_x86_64.ipk)
 
@@ -49,7 +49,7 @@ cd /tmp
 wget -O warp-masque.ipk https://github.com/mengxianbo/WARP-MASQUE/releases/download/build-3/warp-masque_1.0.0-1_x86_64.ipk
 ```
 
-> build-3 是基础打包验证版本，不包含已完成的 LuCI 双模式出口控制和防回环实现。后续功能版本会发布新的 Release，请以 Releases 页面最新版本说明为准。
+> build-3 是基础打包验证版本，不包含后续提交的 LuCI 页面。包含中文 LuCI 设置页的更新构建正在 GitHub Actions 中编译；请以 Releases 页面最新版本说明为准。
 
 ## 4. 安装命令
 
