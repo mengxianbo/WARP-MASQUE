@@ -1,0 +1,59 @@
+name: Build WARP-MASQUE OpenWrt package
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'openwrt/**'
+      - '.github/workflows/build.yml'
+  schedule:
+    - cron: '20 3 * * 1'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang flex bison g++ gawk             gcc-multilib g++-multilib gettext git libncurses-dev libssl-dev             python3 python3-distutils rsync unzip zlib1g-dev file wget curl
+
+      - name: Download OpenWrt SDK
+        run: |
+          VERSION="24.10.5"
+          SDK_URL="https://downloads.openwrt.org/releases/$VERSION/targets/x86/64/openwrt-sdk-$VERSION-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+          mkdir sdk && cd sdk
+          wget -O sdk.tar.zst "$SDK_URL"
+          tar --zstd -xf sdk.tar.zst --strip-components=1
+          mkdir -p package/warp-masque
+          cp -a "$GITHUB_WORKSPACE/openwrt/." package/warp-masque/
+          make defconfig
+          make package/warp-masque/compile V=s
+
+      - name: Collect IPK
+        run: |
+          mkdir -p dist
+          find sdk/bin/packages -type f -name 'warp-masque*.ipk' -exec cp {} dist/ \;
+          test -n "$(find dist -name '*.ipk' -print -quit)"
+
+      - name: Publish artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: warp-masque-openwrt-x86-64
+          path: dist/*.ipk
+
+      - name: Publish GitHub Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: WARP-MASQUE build ${{ github.run_number }}
+          files: dist/*.ipk
+          generate_release_notes: true
