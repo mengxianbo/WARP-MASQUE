@@ -1,0 +1,52 @@
+#!/bin/sh
+set -u
+PROG=/usr/bin/usque
+DATADIR=/etc/warp-masque
+CONFIG_JSON=$DATADIR/config.json
+RUNDIR=/var/run/warp-masque
+LOG=$RUNDIR/register.log
+LOCK=$RUNDIR/register.lock
+INIT=/etc/init.d/warp-masque
+mkdir -p "$RUNDIR" "$DATADIR"
+chmod 700 "$DATADIR"
+case "${1:-status}" in
+  register)
+    if [ -s "$CONFIG_JSON" ]; then
+      echo "设备配置已存在；为避免覆盖密钥和账户信息，拒绝重复注册。"; exit 2
+    fi
+    if ! mkdir "$LOCK" 2>/dev/null; then
+      echo "注册任务正在运行，请稍后刷新页面。"; exit 3
+    fi
+    (
+      trap 'rmdir "$LOCK" 2>/dev/null' EXIT INT TERM
+      echo "开始注册。LuCI 用户已点击同意条款并注册。" > "$LOG"
+      # usque v1.5.0 documents --accept-tos for non-interactive registration.
+      "$PROG" -c "$CONFIG_JSON" register --accept-tos --name "OpenWrt-WARP-MASQUE" >> "$LOG" 2>&1
+      rc=$?
+      if [ "$rc" -eq 0 ] && [ -s "$CONFIG_JSON" ]; then
+        chmod 600 "$CONFIG_JSON"; echo "注册成功。设备配置已保存。" >> "$LOG"
+      else
+        rm -f "$CONFIG_JSON"; echo "注册失败，退出码：$rc。" >> "$LOG"
+      fi
+      exit "$rc"
+    ) </dev/null >/dev/null 2>&1 &
+    echo "注册任务已启动。请刷新页面查看状态和日志。"
+    ;;
+  start)
+    [ -s "$CONFIG_JSON" ] || { echo "尚未注册设备，请先点击同意条款并注册。"; exit 4; }
+    uci set warp-masque.main.enabled='1'; uci commit warp-masque
+    "$INIT" enable; "$INIT" start
+    ;;
+  stop) "$INIT" stop ;;
+  status)
+    if [ -s "$CONFIG_JSON" ]; then echo "设备注册：已注册"; else echo "设备注册：未注册"; fi
+    if ubus call service list '{"name":"warp-masque"}' 2>/dev/null | grep -q '"running": true'; then
+      echo "代理服务：运行中（请结合端口和日志确认）"
+    else echo "代理服务：未确认运行"; fi
+    if [ -f "$LOG" ]; then
+      echo "--- 最近注册日志 ---"
+      tail -n 25 "$LOG" | sed -E 's/(access_token|private_key|token)[=: ]+[^ ,"]+/\1=[已隐藏]/Ig'
+    fi
+    ;;
+  *) echo "不支持的操作。"; exit 64 ;;
+esac
