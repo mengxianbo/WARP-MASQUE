@@ -63,9 +63,14 @@ jobs:
           tar --numeric-owner --owner=0 --group=0 -czf "$RUNNER_TEMP/data.tar.gz" .
           cd "$RUNNER_TEMP"
           printf '2.0\n' > debian-binary
-          ar -cr "$GITHUB_WORKSPACE/dist/warp-masque_1.2.0-1_x86_64.ipk" debian-binary control.tar.gz data.tar.gz
-          file "$GITHUB_WORKSPACE/dist/warp-masque_1.2.0-1_x86_64.ipk"
-          ar t "$GITHUB_WORKSPACE/dist/warp-masque_1.2.0-1_x86_64.ipk"
+          # OpenWrt opkg IPK format is a gzip-compressed tar archive,
+          # NOT the Debian .deb ar archive.
+          tar --format=gnu --numeric-owner --owner=0 --group=0 \
+            -czf "$GITHUB_WORKSPACE/dist/warp-masque_1.2.0-1_x86_64.ipk" \
+            ./debian-binary ./data.tar.gz ./control.tar.gz
+          gzip -t "$GITHUB_WORKSPACE/dist/warp-masque_1.2.0-1_x86_64.ipk"
+          tar -tzf "$GITHUB_WORKSPACE/dist/warp-masque_1.2.0-1_x86_64.ipk"
+          test "$(tar -xOzf "$GITHUB_WORKSPACE/dist/warp-masque_1.2.0-1_x86_64.ipk" ./debian-binary)" = "2.0"
       - name: Upload IPK artifact
         uses: actions/upload-artifact@v4
         with:
