@@ -6,6 +6,8 @@ on:
     branches: [main]
     paths:
       - 'openwrt/**'
+      - 'luci/**'
+      - 'README.md'
       - '.github/workflows/build.yml'
   schedule:
     - cron: '20 3 * * 1'
@@ -42,20 +44,23 @@ jobs:
           set -euxo pipefail
           STAGE="$RUNNER_TEMP/ipk-root"
           mkdir -p "$STAGE/usr/bin" "$STAGE/etc/config" "$STAGE/etc/init.d"
+          mkdir -p "$STAGE/usr/lib/lua/luci/controller" "$STAGE/usr/lib/lua/luci/model/cbi"
           install -m 0755 usque "$STAGE/usr/bin/usque"
           install -m 0644 openwrt/files/warp-masque.config "$STAGE/etc/config/warp-masque"
           install -m 0755 openwrt/files/warp-masque.init "$STAGE/etc/init.d/warp-masque"
+          install -m 0644 luci/controller/warp-masque.lua "$STAGE/usr/lib/lua/luci/controller/warp-masque.lua"
+          install -m 0644 luci/model/cbi/warp-masque.lua "$STAGE/usr/lib/lua/luci/model/cbi/warp-masque.lua"
 
           mkdir -p dist "$RUNNER_TEMP/ipk-control"
           cat > "$RUNNER_TEMP/ipk-control/control" <<'EOF'
           Package: warp-masque
-          Version: 1.0.0-1
+          Version: 1.1.0-1
           Architecture: x86_64
           Maintainer: mengxianbo
           Section: net
           Priority: optional
-          Depends: ca-bundle
-          Description: Cloudflare WARP MASQUE SOCKS5 and HTTP CONNECT proxy for OpenWrt. No TUN and no route takeover.
+          Depends: ca-bundle, luci-base
+          Description: Cloudflare WARP MASQUE SOCKS5 and HTTP CONNECT proxy for OpenWrt with Chinese LuCI settings. No TUN and no route takeover.
           EOF
 
           cd "$RUNNER_TEMP/ipk-control"
@@ -64,9 +69,9 @@ jobs:
           tar --numeric-owner --owner=0 --group=0 -czf "$RUNNER_TEMP/data.tar.gz" .
           cd "$RUNNER_TEMP"
           printf '2.0\n' > debian-binary
-          ar -cr "$GITHUB_WORKSPACE/dist/warp-masque_1.0.0-1_x86_64.ipk" debian-binary control.tar.gz data.tar.gz
-          file "$GITHUB_WORKSPACE/dist/warp-masque_1.0.0-1_x86_64.ipk"
-          ar t "$GITHUB_WORKSPACE/dist/warp-masque_1.0.0-1_x86_64.ipk"
+          ar -cr "$GITHUB_WORKSPACE/dist/warp-masque_1.1.0-1_x86_64.ipk" debian-binary control.tar.gz data.tar.gz
+          file "$GITHUB_WORKSPACE/dist/warp-masque_1.1.0-1_x86_64.ipk"
+          ar t "$GITHUB_WORKSPACE/dist/warp-masque_1.1.0-1_x86_64.ipk"
 
       - name: Upload IPK artifact
         uses: actions/upload-artifact@v4
