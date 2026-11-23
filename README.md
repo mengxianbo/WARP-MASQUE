@@ -1,243 +1,272 @@
 # WARP-MASQUE for OpenWrt
 
-**Cloudflare WARP MASQUE 代理插件（OpenWrt）**
+**Cloudflare WARP MASQUE 本机代理插件｜中文版**
 
-本项目基于上游开源项目 [Diniboy1123/usque](https://github.com/Diniboy1123/usque)，在 OpenWrt 上提供 WARP MASQUE 代理服务。它不是 WireGuard 版 WARP，也不是 TUN 接管方案。
+本项目基于上游 [Diniboy1123/usque](https://github.com/Diniboy1123/usque) v1.5.0，为 OpenWrt 提供 Cloudflare WARP MASQUE SOCKS5 和 HTTP CONNECT 代理，并提供中文 LuCI 管理页面。
 
-## 1. 功能与设计目标
+> 本项目是第三方开源集成，不是 Cloudflare 官方软件，也不代表 Cloudflare 对本项目提供支持。
 
-- 使用 Cloudflare WARP **MASQUE** 协议。
-- 提供本机 SOCKS5 代理：`127.0.0.1:32500`。
-- 提供本机 HTTP CONNECT 代理：`127.0.0.1:32511`。
-- 不创建 TUN 网卡。
-- 不接管 OpenWrt 的 LAN 默认路由。
-- 不自动添加、删除或修改 PassWall 节点。
-- 不自动暂停或重启 PassWall。
-- 代理地址由用户手动添加到 PassWall。
-- 计划提供「有 WAN 口」和「无 WAN 口」两种网络出口配置模式。
+## 一、设计原则
 
-> **重要状态说明（请先阅读）**：当前已验证成功的是 x86_64 基础 IPK 打包流程。当前最新源码已加入 LuCI 中文基础设置页和「有 WAN 口 / 无 WAN 口」选项，但该选项目前只保存配置；WAN 出口绑定、MASQUE 外层连接绕过 PassWall 和回环防护后端尚未完成。上述网络隔离功能完成并通过实机测试前，不建议在承担主网络出口的生产路由器上启用。
+- 仅使用 WARP MASQUE，不使用 TUN 模式，不创建 TUN 网卡。
+- 不接管 LAN 默认路由，不修改系统默认路由。
+- 默认仅监听路由器本机：SOCKS5 地址 127.0.0.1:32500，HTTP CONNECT 地址 127.0.0.1:32511。
+- 不自动添加、删除或修改 PassWall 节点，不自动暂停 PassWall。
+- PassWall 节点由用户手动添加。
+- 注册必须由用户在 LuCI 页面主动点击「同意条款并注册」触发；开机启动服务不会擅自注册新设备。
+- 当前 WAN 出口绑定和 PassWall 外层连接防回环仍未完成实机验证，不能把本版本当作已解决回环的正式网关方案。
 
-## 2. 当前构建支持范围
+## 二、当前版本和支持范围
 
-| 项目 | 当前状态 |
+| 项目 | 当前构建目标/状态 |
 |---|---|
+| 软件包版本 | 1.2.0-1 |
 | OpenWrt 架构 | x86_64 |
-| 软件包 | IPK |
-| MASQUE 客户端 | usque v1.5.0 |
-| SOCKS5 / HTTP CONNECT | 上游客户端支持；当前服务脚本已配置启动命令，仍需完成路由器实测 |
-| LuCI 中文设置页 | 已加入基础配置页（出口模式选项、端口等） |
-| 有 WAN / 无 WAN 模式 | 设计已确定，正在实现 |
-| PassWall 自动联动 | 不会自动修改 PassWall |
-| PassWall 外层连接绕行 | 尚未完成验证，不得宣称已解决回环 |
+| 软件包格式 | IPK（opkg 系统） |
+| WARP 客户端 | usque v1.5.0 |
+| LuCI | 中文管理页，含注册、启动、停止操作 |
+| 注册条款确认 | 用户点击授权后调用上游 register --accept-tos |
+| SOCKS5 / HTTP CONNECT | 启动命令已集成，需在目标固件实测 |
+| WAN / 默认出口选择 | 当前保存设置，尚未强制绑定出口 |
+| PassWall 自动联动 | 不做，不修改 PassWall 配置 |
+| PassWall 外层连接绕行 | 尚未完成验证 |
 | TUN / 默认路由接管 | 不使用 |
 
-## 3. 下载 IPK
+**兼容性提示：** 当前 Actions 产物面向 x86_64、使用 opkg 的 OpenWrt。若系统为 apk 包管理器、ARM/ARM64、MIPS 或其他架构，不要安装此 IPK。先确认固件版本、架构和包管理器。
 
-打开本项目的 Releases 页面：
+## 三、下载
 
-https://github.com/mengxianbo/WARP-MASQUE/releases
+- GitHub Releases：<https://github.com/mengxianbo/WARP-MASQUE/releases>
+- 最新 Release 资产：<https://github.com/mengxianbo/WARP-MASQUE/releases/latest/download/warp-masque_1.2.0-1_x86_64.ipk>
 
-当前已发布的基础构建资产（仅 x86_64；不包含后来提交的 LuCI 页面变更）：
+如果最新构建尚未发布，请进入 Releases 页面选择最新成功构建；也可以在 Actions 页面下载构建产物：<https://github.com/mengxianbo/WARP-MASQUE/actions>。
 
-- [warp-masque_1.0.0-1_x86_64.ipk（build-3）](https://github.com/mengxianbo/WARP-MASQUE/releases/download/build-3/warp-masque_1.0.0-1_x86_64.ipk)
+## 四、安装前检查
 
-也可以在 OpenWrt SSH 中下载：
+通过 SSH 登录 OpenWrt，执行：
 
-```sh
-cd /tmp
-wget -O warp-masque.ipk https://github.com/mengxianbo/WARP-MASQUE/releases/download/build-3/warp-masque_1.0.0-1_x86_64.ipk
-```
+    ubus call system board
+    cat /etc/openwrt_release
+    opkg print-architecture
+    command -v opkg
 
-> build-3 是基础打包验证版本，不包含后续提交的 LuCI 页面。包含中文 LuCI 设置页的更新构建正在 GitHub Actions 中编译；请以 Releases 页面最新版本说明为准。
+确认设备是 x86_64、系统使用 opkg 而不是 apk，并且路由器可以访问 GitHub 和 Cloudflare 注册服务。建议先备份配置：
 
-## 4. 安装命令
+    sysupgrade -b /tmp/openwrt-backup.tar.gz
 
-先确认设备架构：
+同时确保有 Proxmox/VNC/串口等本地救援入口。
 
-```sh
-ubus call system board
-opkg print-architecture
-```
+## 五、完整安装命令
 
-只有 x86_64 设备可以安装当前 x86_64 IPK。确认系统使用 opkg 后执行：
+### 方法 A：SSH 下载并安装
 
-```sh
-opkg update
-opkg install /tmp/warp-masque.ipk
-```
+    cd /tmp
+    wget -O warp-masque_1.2.0-1_x86_64.ipk https://github.com/mengxianbo/WARP-MASQUE/releases/latest/download/warp-masque_1.2.0-1_x86_64.ipk
+    opkg update
+    opkg install ca-bundle
+    opkg install luci-base
+    opkg install ./warp-masque_1.2.0-1_x86_64.ipk
 
-如果提示缺少依赖，可先安装 CA 根证书：
+如果固件软件源没有 luci-base，请先确认固件本身是否安装 LuCI；不要从不匹配的固件源强行安装依赖。
 
-```sh
-opkg update
-opkg install ca-bundle
-opkg install /tmp/warp-masque.ipk
-```
+### 方法 B：电脑下载后上传
 
-检查安装文件：
+1. 在电脑打开 <https://github.com/mengxianbo/WARP-MASQUE/releases>。
+2. 下载 warp-masque_1.2.0-1_x86_64.ipk。
+3. 使用 SCP、WinSCP 或路由器文件管理功能上传到路由器 /tmp/。
+4. SSH 执行：
 
-```sh
-ls -l /usr/bin/usque
-ls -l /etc/init.d/warp-masque
-ls -l /etc/config/warp-masque
-```
+    opkg update
+    opkg install ca-bundle
+    opkg install luci-base
+    opkg install /tmp/warp-masque_1.2.0-1_x86_64.ipk
 
-## 5. 配置与启动
+### 检查安装结果
 
-查看 UCI 默认配置：
+    opkg list-installed | grep -i warp-masque
+    ls -l /usr/bin/usque
+    ls -l /usr/libexec/warp-masque
+    ls -l /etc/init.d/warp-masque
+    ls -l /etc/config/warp-masque
 
-```sh
-uci show warp-masque
-```
+安装后进入 LuCI：**服务 → WARP MASQUE**。若菜单未显示，重新登录 LuCI，再检查：
 
-默认监听地址和端口：
+    /etc/init.d/rpcd restart
+    logread | grep -i luci
 
-- SOCKS5：`127.0.0.1:32500`
-- HTTP CONNECT：`127.0.0.1:32511`
+## 六、首次注册设备（重要）
 
-默认关闭服务。基础服务配置完成后，可通过以下命令启用开机启动并启动服务：
+1. 打开 LuCI：**服务 → WARP MASQUE**。
+2. 阅读页面上的条款说明。
+3. 点击 **「同意条款并注册」**。
+4. 后台启动注册任务；稍等片刻后刷新页面查看状态和注册日志。
+5. 注册成功后，设备配置保存在 /etc/warp-masque/config.json。
 
-```sh
-uci set warp-masque.main.enabled='1'
-uci commit warp-masque
-/etc/init.d/warp-masque enable
-/etc/init.d/warp-masque start
-```
+### 自动确认机制
 
-首次启动时，服务脚本会在尚无设备配置文件时调用 usque 注册流程。注册成功后，配置保存在：
+本插件固定使用上游 usque v1.5.0。该版本 register 命令提供 --accept-tos 参数，专门用于非交互式接受 Cloudflare 服务条款。因此实现不是把一个不区分上下文的 Y 随意写入标准输入，而是在用户主动点击授权按钮后执行：
 
-```
-/etc/warp-masque/config.json
-```
+    /usr/bin/usque -c /etc/warp-masque/config.json register --accept-tos --name "OpenWrt-WARP-MASQUE"
 
-该文件包含设备密钥和访问凭据，请勿公开、上传到 GitHub 或发送给他人。检查文件权限：
+这比模拟键盘输入更可靠。按钮点击代表你同意注册当时适用的条款；不会在没有用户操作时静默注册，也不会自动接受未来版本变化的新条款。
 
-```sh
-chmod 700 /etc/warp-masque
-chmod 600 /etc/warp-masque/config.json
-```
+为避免覆盖账户和设备密钥，如果配置文件已经存在，注册动作会拒绝重复注册。不要为了重新注册直接删除配置文件，除非确认旧设备配置不再需要。
 
-查看服务状态和日志：
+### 注册状态和日志
 
-```sh
-/etc/init.d/warp-masque status
-logread -e warp-masque
-logread | grep -i usque
-```
+    ls -l /etc/warp-masque/config.json
+    tail -n 60 /var/run/warp-masque/register.log
+    logread -e warp-masque
 
-停止服务：
+配置文件含私钥、访问令牌等敏感信息，请勿上传 GitHub 或发送给他人。权限应保持：
 
-```sh
-/etc/init.d/warp-masque stop
-```
+    chmod 700 /etc/warp-masque
+    chmod 600 /etc/warp-masque/config.json
 
-## 6. 代理测试
+## 七、启动、停止和开机启动
+
+完成设备注册后，在 LuCI 点击「启动 SOCKS5 / HTTP 代理」。
+
+SSH 命令：
+
+    /etc/init.d/warp-masque enable
+    uci set warp-masque.main.enabled='1'
+    uci commit warp-masque
+    /etc/init.d/warp-masque start
+
+停止：
+
+    /etc/init.d/warp-masque stop
+
+禁止开机启动：
+
+    /etc/init.d/warp-masque disable
+    uci set warp-masque.main.enabled='0'
+    uci commit warp-masque
+
+查看进程、端口和日志：
+
+    ubus call service list '{"name":"warp-masque"}'
+    ps | grep '[u]sque'
+    netstat -lntp 2>/dev/null | grep -E '32500|32511'
+    logread -e warp-masque
+
+若系统没有 netstat，可尝试 ss -lntp。
+
+## 八、代理测试
 
 在路由器本机执行 SOCKS5 测试：
 
-```sh
-curl -x socks5h://127.0.0.1:32500 https://www.cloudflare.com/cdn-cgi/trace
-```
+    curl -v -x socks5h://127.0.0.1:32500 https://www.cloudflare.com/cdn-cgi/trace
 
 HTTP CONNECT 测试：
 
-```sh
-curl -x http://127.0.0.1:32511 https://www.cloudflare.com/cdn-cgi/trace
-```
+    curl -v -x http://127.0.0.1:32511 https://www.cloudflare.com/cdn-cgi/trace
 
-查看监听端口：
+如提示没有 curl：
 
-```sh
-netstat -lntp 2>/dev/null | grep -E '32500|32511'
-```
+    opkg update
+    opkg install curl
 
-如果系统没有 netstat，可使用：
+检查输出中的 warp=、ip=、colo= 等字段。测试成功只能说明本机代理可用，不能证明 PassWall 外层连接已经绕过，也不能证明防回环已完成。
 
-```sh
-ss -lntp 2>/dev/null | grep -E '32500|32511'
-```
+## 九、PassWall 手动添加方式
 
-测试结果中可查看 `warp=` 字段。代理连接成功不等于已经完成 PassWall 回环隔离验证。
+本项目不写入 PassWall UCI，不调用 PassWall API，也不会自动切换节点。
 
-## 7. PassWall 手动配置原则
-
-本项目不会自动写入 PassWall 配置。待代理服务运行并完成外层连接绕行验证后，用户可以在 PassWall 中手动添加：
+代理服务运行后，可由你自行在 PassWall 添加：
 
 | 类型 | 地址 | 端口 |
 |---|---|---:|
 | SOCKS5 | 127.0.0.1 | 32500 |
 | HTTP | 127.0.0.1 | 32511 |
 
-**不要把 WARP MASQUE 外层连接再次交给这个 WARP 代理本身。** 如果 PassWall 的路由器本机 OUTPUT 规则捕获 usque 的外层连接，就可能形成代理回环。当前版本尚未证明能够在不同 PassWall 版本和防火墙后端下可靠绕过该捕获，因此在完成专用进程身份/策略路由或等效隔离并验证之前，不应将其作为正式出口使用。
+**防回环警告：** PassWall 可能通过路由器本机 OUTPUT 规则捕获 usque 发出的 MASQUE 外层连接。如果外层连接又被送入本机 WARP 代理，就可能形成代理回环。当前构建尚未实现并验证针对 usque 进程的专用绕行策略。请勿把该节点设置为承担全网流量的正式出口，直到项目明确发布防回环验证完成的版本。
 
-本项目不会通过暂停 PassWall、删除节点、修改默认路由或创建 TUN 来规避此问题。
+本项目不会通过暂停 PassWall、删除节点、全局排除 root 流量、修改默认路由或创建 TUN 来掩盖问题。
 
-## 8. 两种网络出口模式（开发目标）
+## 十、网络出口选项说明
 
-后续 LuCI 界面提供以下选择：
+LuCI 当前有两种设置项：
 
-### 模式 A：有 WAN 口
+- **有 WAN 口：指定 WAN 接口**，例如 wan、pppoe-wan。
+- **没有 WAN 口：使用系统默认出口**，适合单网口、旁路由和虚拟机。
 
-- 自动枚举网络接口，并允许选择 WAN 逻辑接口（例如 `wan` 或 `pppoe-wan`）。
-- 显示检测到的出口、网关和状态。
-- 目标是让 usque 的 MASQUE 外层连接走指定 WAN，而不是被 PassWall 再次代理。
+目前这些设置只保存 UCI 值，尚未实现真正的外层连接绑定。选择某个接口不代表内核路由已经按该接口执行。后续必须结合 PassWall 实际规则，完成专用进程身份/策略路由隔离，并进行断线、重连、DNS、IPv4/IPv6 和回环测试。
 
-### 模式 B：没有 WAN 口
+## 十一、卸载
 
-- 面向单网口软路由、旁路由和虚拟机等场景。
-- 自动读取系统当前有效的默认出口及网关。
-- 不要求设备必须存在名为 `wan` 的逻辑接口。
+先停止并禁用：
 
-两种模式都必须满足：不创建 TUN、不接管 LAN 默认路由、不自动修改 PassWall，并对 MASQUE 外层连接实施可验证的防回环隔离。**在后端隔离逻辑和实机测试完成前，模式选择界面不能被当作已经生效的流量绑定功能。**
+    /etc/init.d/warp-masque stop
+    /etc/init.d/warp-masque disable
 
-## 9. 卸载
+卸载软件包：
 
-先停止并禁用服务：
+    opkg remove warp-masque
 
-```sh
-/etc/init.d/warp-masque stop
-/etc/init.d/warp-masque disable
-```
+如确定不再需要已注册的 WARP 设备配置，再手动删除（不可恢复）：
 
-再卸载软件包：
+    rm -rf /etc/warp-masque
+    rm -rf /var/run/warp-masque
 
-```sh
-opkg remove warp-masque
-```
+本插件不会自动清理或修改 PassWall 节点；如曾手动添加，请自行到 PassWall 页面删除。
 
-如需同时删除 WARP 设备注册信息（此操作不可恢复，请先确认不再需要该设备配置）：
+## 十二、常见问题
 
-```sh
-rm -rf /etc/warp-masque
-```
+**1. LuCI 没有显示 WARP MASQUE 菜单？**
 
-卸载插件不会自动修改或清理 PassWall 节点，因为本项目不会管理 PassWall 配置。
+确认已安装 luci-base，然后执行：
 
-## 10. 从源码构建
+    /etc/init.d/rpcd restart
 
-GitHub Actions 会自动构建 x86_64 IPK。也可以手动构建上游 usque：
+退出并重新登录 LuCI。
 
-```sh
-git clone --depth 1 --branch v1.5.0 https://github.com/Diniboy1123/usque.git
-cd usque
-CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o usque .
-```
+**2. 点击注册后一直显示注册中？**
 
-上游要求 Go 1.26.3 或更新版本。OpenWrt 插件的打包流程见本仓库 `.github/workflows/build.yml`。
+检查：
 
-## 11. 安全提示
+    ps | grep '[u]sque'
+    tail -n 100 /var/run/warp-masque/register.log
 
-1. 默认只监听 `127.0.0.1`，不要随意改成 `0.0.0.0`。
-2. 不要公开 `/etc/warp-masque/config.json`。
-3. 不要把当前基础构建当作已完成防回环的正式版本。
-4. 不要在远程管理且没有本地控制台/救援方式的主路由上测试未验证的策略路由或防火墙规则。
-5. 修改网络出口前，先备份 OpenWrt 配置，并确保可以通过控制台恢复。
+确认路由器能访问 Cloudflare 注册服务。不要公开配置文件内容。
 
-## 12. 上游项目与许可
+**3. 提示设备已注册？**
 
-- 上游项目：[Diniboy1123/usque](https://github.com/Diniboy1123/usque)
-- 上游协议实现：Cloudflare WARP MASQUE / Connect-IP
-- 上游许可证：MIT（请以对应上游版本中的 LICENSE 文件为准）
+为防止覆盖原有密钥，插件拒绝重复注册。保留原配置即可使用；确需重新注册时，应先明确处理旧设备和旧配置。
 
-本项目是第三方开源集成项目，与 Cloudflare 官方没有隶属关系。
+**4. 代理端口没有监听？**
+
+先确认设备注册成功，再执行启动命令并查看：
+
+    logread -e warp-masque
+    ps | grep '[u]sque'
+    netstat -lntp 2>/dev/null | grep -E '32500|32511'
+
+**5. 能代理上网是否表示没有回环？**
+
+不是。代理可用和 PassWall 外层连接绕行是两件事。防回环尚未通过实测前，不要将其投入全网代理。
+
+## 十三、源码与构建
+
+仓库：<https://github.com/mengxianbo/WARP-MASQUE>
+
+GitHub Actions：<https://github.com/mengxianbo/WARP-MASQUE/actions>
+
+上游 usque：<https://github.com/Diniboy1123/usque>
+
+当前构建流程使用 Go 1.26.3，拉取 usque v1.5.0，构建 Linux x86_64 客户端并组装 IPK。手动构建上游客户端示例：
+
+    git clone --depth 1 --branch v1.5.0 https://github.com/Diniboy1123/usque.git
+    cd usque
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o usque .
+
+上游许可证以对应版本仓库中的 LICENSE 文件为准。
+
+## 十四、安全提醒
+
+1. 默认代理只监听 127.0.0.1，不要随意改为 0.0.0.0。
+2. 妥善保护 /etc/warp-masque/config.json。
+3. 不要把尚未完成防回环验证的构建作为生产主路由的全局代理出口。
+4. 修改防火墙或策略路由前先备份配置，确保有本地控制台救援方式。
+5. Cloudflare 条款由用户通过 LuCI 按钮主动确认；插件不会在无用户操作时擅自注册或重新接受条款。
