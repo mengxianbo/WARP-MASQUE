@@ -1,5 +1,4 @@
 name: Build WARP-MASQUE OpenWrt package
-
 on:
   workflow_dispatch:
   push:
@@ -11,23 +10,19 @@ on:
       - '.github/workflows/build.yml'
   schedule:
     - cron: '20 3 * * 1'
-
 permissions:
   contents: write
-
 jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.26.3'
           cache: false
-
       - name: Build upstream usque for OpenWrt x86_64
         env:
           GOOS: linux
@@ -38,47 +33,43 @@ jobs:
           git clone --depth 1 --branch v1.5.0 https://github.com/Diniboy1123/usque.git upstream
           cd upstream
           go build -trimpath -ldflags="-s -w" -o "$GITHUB_WORKSPACE/usque" .
-
       - name: Assemble OpenWrt IPK
         run: |
           set -euxo pipefail
           STAGE="$RUNNER_TEMP/ipk-root"
           mkdir -p "$STAGE/usr/bin" "$STAGE/etc/config" "$STAGE/etc/init.d"
-          mkdir -p "$STAGE/usr/lib/lua/luci/controller" "$STAGE/usr/lib/lua/luci/model/cbi"
+          mkdir -p "$STAGE/usr/libexec" "$STAGE/usr/lib/lua/luci/controller" "$STAGE/usr/lib/lua/luci/model/cbi"
           install -m 0755 usque "$STAGE/usr/bin/usque"
           install -m 0644 openwrt/files/warp-masque.config "$STAGE/etc/config/warp-masque"
           install -m 0755 openwrt/files/warp-masque.init "$STAGE/etc/init.d/warp-masque"
+          install -m 0755 openwrt/files/warp-masquectl "$STAGE/usr/libexec/warp-masque"
           install -m 0644 luci/controller/warp-masque.lua "$STAGE/usr/lib/lua/luci/controller/warp-masque.lua"
           install -m 0644 luci/model/cbi/warp-masque.lua "$STAGE/usr/lib/lua/luci/model/cbi/warp-masque.lua"
-
           mkdir -p dist "$RUNNER_TEMP/ipk-control"
           cat > "$RUNNER_TEMP/ipk-control/control" <<'EOF'
           Package: warp-masque
-          Version: 1.1.0-1
+          Version: 1.2.0-1
           Architecture: x86_64
           Maintainer: mengxianbo
           Section: net
           Priority: optional
           Depends: ca-bundle, luci-base
-          Description: Cloudflare WARP MASQUE SOCKS5 and HTTP CONNECT proxy for OpenWrt with Chinese LuCI settings. No TUN and no route takeover.
+          Description: Cloudflare WARP MASQUE SOCKS5 and HTTP CONNECT proxy for OpenWrt with Chinese LuCI management.
           EOF
-
           cd "$RUNNER_TEMP/ipk-control"
           tar --numeric-owner --owner=0 --group=0 -czf "$RUNNER_TEMP/control.tar.gz" control
           cd "$STAGE"
           tar --numeric-owner --owner=0 --group=0 -czf "$RUNNER_TEMP/data.tar.gz" .
           cd "$RUNNER_TEMP"
           printf '2.0\n' > debian-binary
-          ar -cr "$GITHUB_WORKSPACE/dist/warp-masque_1.1.0-1_x86_64.ipk" debian-binary control.tar.gz data.tar.gz
-          file "$GITHUB_WORKSPACE/dist/warp-masque_1.1.0-1_x86_64.ipk"
-          ar t "$GITHUB_WORKSPACE/dist/warp-masque_1.1.0-1_x86_64.ipk"
-
+          ar -cr "$GITHUB_WORKSPACE/dist/warp-masque_1.2.0-1_x86_64.ipk" debian-binary control.tar.gz data.tar.gz
+          file "$GITHUB_WORKSPACE/dist/warp-masque_1.2.0-1_x86_64.ipk"
+          ar t "$GITHUB_WORKSPACE/dist/warp-masque_1.2.0-1_x86_64.ipk"
       - name: Upload IPK artifact
         uses: actions/upload-artifact@v4
         with:
           name: warp-masque-openwrt-x86_64
           path: dist/*.ipk
-
       - name: Publish GitHub Release
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
