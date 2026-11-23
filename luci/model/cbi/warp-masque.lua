@@ -1,18 +1,19 @@
+local sys = require "luci.sys"
 local m = Map("warp-masque", translate("WARP MASQUE"),
 	translate("Cloudflare WARP MASQUE 本机代理管理。不会创建 TUN，也不会接管 LAN 默认路由。"))
 local s = m:section(NamedSection, "main", "warp-masque", translate("设备与服务管理"))
 s.addremove = false
 local state = s:option(DummyValue, "_state", translate("当前状态"))
-state.rawhtml = true
+state.rawhtml = false
 function state.cfgvalue()
-	return luci.sys.exec("/usr/libexec/warp-masque status 2>/dev/null")
+	return sys.exec("/usr/libexec/warp-masque status 2>/dev/null")
 end
 local reg = s:option(Button, "_register", translate("设备注册"))
 reg.inputtitle = translate("同意条款并注册")
 reg.inputstyle = "apply"
 reg.description = translate("点击即表示你同意注册时适用的 Cloudflare 服务条款。程序调用 usque v1.5.0 的 --accept-tos 参数自动确认，无需在终端输入 Y。已有设备配置时拒绝覆盖。")
 function reg.write(self, section)
-	luci.sys.call("/usr/libexec/warp-masque register >/dev/null 2>&1")
+	sys.call("/usr/libexec/warp-masque register >/dev/null 2>&1")
 end
 local start = s:option(Button, "_start", translate("启动代理"))
 start.inputtitle = translate("启动 SOCKS5 / HTTP 代理")
