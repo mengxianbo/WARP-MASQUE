@@ -42,6 +42,9 @@ jobs:
           STAGE="$RUNNER_TEMP/ipk-root"
           mkdir -p "$STAGE/usr/bin" "$STAGE/etc/config" "$STAGE/etc/init.d"
           mkdir -p "$STAGE/usr/libexec" "$STAGE/usr/lib/lua/luci/controller" "$STAGE/usr/lib/lua/luci/model/cbi"
+          mkdir -p "$STAGE/usr/share/licenses/warp-masque"
+          install -m 0644 LICENSE "$STAGE/usr/share/licenses/warp-masque/LICENSE"
+          install -m 0644 THIRD_PARTY_NOTICES.md "$STAGE/usr/share/licenses/warp-masque/THIRD_PARTY_NOTICES.md"
           install -m 0755 usque "$STAGE/usr/bin/usque"
           install -m 0644 openwrt/files/warp-masque.config "$STAGE/etc/config/warp-masque"
           install -m 0755 openwrt/files/warp-masque.init "$STAGE/etc/init.d/warp-masque"
@@ -54,6 +57,7 @@ jobs:
           Version: 1.2.0-1
           Architecture: x86_64
           Maintainer: mengxianbo
+          License: GPL-3.0-only AND MIT
           Section: net
           Priority: optional
           Depends: ca-bundle, luci-base
