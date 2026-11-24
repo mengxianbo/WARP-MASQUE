@@ -1,6 +1,6 @@
 local sys = require "luci.sys"
 local m = Map("warp-masque", translate("WARP MASQUE"),
-	translate("Cloudflare WARP MASQUE 本机代理管理。不会创建 TUN，也不会接管 LAN 默认路由。"))
+	translate("Cloudflare WARP MASQUE 本机代理管理。不会创建 TUN，也不会接管 LAN 默认路由。") .. "<br />" .. translate("Copyright (C) 2026 mengxianbo。此项目按 GNU GPL-3.0-only 发布；可依该许可证复制、修改和再发布。软件不提供任何担保。许可证全文见项目仓库 LICENSE 文件。"))
 local s = m:section(NamedSection, "main", "warp-masque", translate("设备与服务管理"))
 s.addremove = false
 local state = s:option(DummyValue, "_state", translate("当前状态"))
