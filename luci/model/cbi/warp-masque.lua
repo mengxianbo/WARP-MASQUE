@@ -1,3 +1,7 @@
+-- Copyright (C) 2026 mengxianbo
+-- SPDX-License-Identifier: GPL-3.0-only
+-- This file is part of WARP-MASQUE for OpenWrt.
+
 local sys = require "luci.sys"
 local m = Map("warp-masque", translate("WARP MASQUE"),
 	translate("Cloudflare WARP MASQUE 本机代理管理。不会创建 TUN，也不会接管 LAN 默认路由。") .. " — " .. translate("Copyright (C) 2026 mengxianbo。此项目按 GNU GPL-3.0-only 发布；可依该许可证复制、修改和再发布。软件不提供任何担保。许可证全文见项目仓库 LICENSE 文件。"))
