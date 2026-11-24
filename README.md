@@ -270,3 +270,14 @@ GitHub Actions：<https://github.com/mengxianbo/WARP-MASQUE/actions>
 3. 不要把尚未完成防回环验证的构建作为生产主路由的全局代理出口。
 4. 修改防火墙或策略路由前先备份配置，确保有本地控制台救援方式。
 5. Cloudflare 条款由用户通过 LuCI 按钮主动确认；插件不会在无用户操作时擅自注册或重新接受条款。
+
+
+## 十五、开源许可证与第三方组件
+
+本仓库原创的 LuCI 页面、OpenWrt 服务脚本、打包脚本、GitHub Actions 工作流及项目文档，采用 **GNU GPL-3.0-only（GPL 第 3 版，仅此版本）** 发布。完整条款见仓库根目录 [LICENSE](LICENSE)。
+
+构建产物中的 `usque` 是独立的上游组件，来自 [Diniboy1123/usque v1.5.0](https://github.com/Diniboy1123/usque/tree/v1.5.0)，其许可证为 MIT；上游版权与许可声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。本项目不会把上游 MIT 组件的原始许可证声明替换为 GPL。
+
+**修改与再分发：** 修改本项目 GPL 覆盖的部分或再分发相应二进制时，请遵守 GPL-3.0-only，包括保留版权/许可证声明，并按 GPL 要求提供对应源代码和必要的构建、安装脚本。GitHub 仓库及其 Actions 构建流程用于提供本项目对应源码与构建方式。
+
+**无担保：** 本项目按“现状”提供，不提供任何明示或默示担保。使用者需自行评估网络环境、Cloudflare 服务条款和 OpenWrt 固件兼容性。
