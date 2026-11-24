@@ -8,6 +8,8 @@ on:
       - 'openwrt/**'
       - 'luci/**'
       - 'README.md'
+      - 'LICENSE'
+      - 'THIRD_PARTY_NOTICES.md'
       - '.github/workflows/build.yml'
   schedule:
     - cron: '20 3 * * 1'
