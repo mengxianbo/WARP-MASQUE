@@ -1,0 +1,61 @@
+name: Cleanup old releases and build artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_cleanup:
+        description: "Delete old build-* releases/tags and all Actions artifacts except Build #29"
+        required: true
+        type: choice
+        options:
+          - NO
+          - YES_DELETE_OLD
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  cleanup:
+    if: ${{ inputs.confirm_cleanup == 'YES_DELETE_OLD' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete old build releases and their tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEEP_TAG="build-29"
+          mapfile -t old_tags < <(gh api --paginate "repos/${REPO}/releases?per_page=100" --jq '.[] | select(.tag_name != "'"${KEEP_TAG}"'") | .tag_name')
+          for tag in "${old_tags[@]}"; do
+            if [[ "${tag}" =~ ^build-[0-9]+$ ]]; then
+              echo "Deleting old release and tag: ${tag}"
+              gh release delete "${tag}" --repo "${REPO}" --yes --cleanup-tag
+            else
+              echo "Skipping non-build tag: ${tag}"
+            fi
+          done
+
+      - name: Delete old Actions artifacts, preserving Build #29
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEEP_RUN_ID="45696516793"
+          mapfile -t run_ids < <(gh api --paginate "repos/${REPO}/actions/runs?per_page=100" --jq '.workflow_runs[].id')
+          for run_id in "${run_ids[@]}"; do
+            if [[ "${run_id}" == "${KEEP_RUN_ID}" ]]; then
+              echo "Preserving artifacts from Build #29 run ${run_id}"
+              continue
+            fi
+            mapfile -t artifact_ids < <(gh api --paginate "repos/${REPO}/actions/runs/${run_id}/artifacts?per_page=100" --jq '.artifacts[].id')
+            for artifact_id in "${artifact_ids[@]}"; do
+              echo "Deleting artifact ${artifact_id} from run ${run_id}"
+              gh api --method DELETE "repos/${REPO}/actions/artifacts/${artifact_id}"
+            done
+          done
+          echo "Cleanup finished. Workflow run history and source files were not deleted."
