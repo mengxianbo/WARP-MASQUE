@@ -22,7 +22,7 @@
 |---|---|
 | 软件包版本 | 1.2.0-1 |
 | OpenWrt 架构 | x86_64 |
-| 软件包格式 | IPK（opkg 系统） |
+| 软件包格式 | IPK（opkg）+ APK v3（OpenWrt 25.12 apk-tools 3.x） |
 | WARP 客户端 | usque v1.5.0 |
 | LuCI | 中文管理页，含注册、启动、停止操作 |
 | 注册条款确认 | 用户点击授权后调用上游 register --accept-tos |
@@ -32,12 +32,12 @@
 | PassWall 外层连接绕行 | 尚未完成验证 |
 | TUN / 默认路由接管 | 不使用 |
 
-**兼容性提示：** 当前 Actions 产物面向 x86_64、使用 opkg 的 OpenWrt。若系统为 apk 包管理器、ARM/ARM64、MIPS 或其他架构，不要安装此 IPK。先确认固件版本、架构和包管理器。
+**兼容性提示：** 当前构建同时提供 x86_64 的 IPK 和 APK v3：OpenWrt 24.10 及更早的 opkg 固件使用 IPK；OpenWrt 25.12.x 的 apk-tools 3.x 固件使用 APK。两种包均为 x86_64，ARM/ARM64、MIPS 等其他架构不要安装。IPK 与 APK 是不同格式，不能互相改名或混装。
 
 ## 三、下载
 
 - GitHub Releases：<https://github.com/mengxianbo/WARP-MASQUE/releases>
-- 最新 Release 资产：<https://github.com/mengxianbo/WARP-MASQUE/releases/latest/download/warp-masque_1.2.0-1_x86_64.ipk>
+- OpenWrt 24.10 及更早（opkg）IPK：<https://github.com/mengxianbo/WARP-MASQUE/releases/latest/download/warp-masque_1.2.0-1_x86_64.ipk>\n- OpenWrt 25.12.x（apk-tools 3.x）APK v3：<https://github.com/mengxianbo/WARP-MASQUE/releases/latest/download/warp-masque_1.2.0-1_x86_64.apk>\n- 详细安装命令：见仓库根目录 [INSTALL.md](INSTALL.md)。
 
 如果最新构建尚未发布，请进入 Releases 页面选择最新成功构建；也可以在 Actions 页面下载构建产物：<https://github.com/mengxianbo/WARP-MASQUE/actions>。
 
@@ -247,7 +247,7 @@ LuCI 当前有两种设置项：
 
 不是。代理可用和 PassWall 外层连接绕行是两件事。防回环尚未通过实测前，不要将其投入全网代理。
 
-## 十三、源码与构建
+## 十三、源码与构建\n\nGitHub Actions 继续构建原有 IPK，并额外使用 OpenWrt 25.12.0 x86/64 官方 SDK 原生生成 APK v3。APK 与 IPK 使用同一份 usque 二进制、LuCI 页面、配置文件和 init 脚本，仅打包格式与安装包管理器不同。
 
 仓库：<https://github.com/mengxianbo/WARP-MASQUE>
 
