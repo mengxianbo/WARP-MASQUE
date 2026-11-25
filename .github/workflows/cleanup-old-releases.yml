@@ -2,14 +2,6 @@ name: Cleanup old releases and build artifacts
 
 on:
   workflow_dispatch:
-    inputs:
-      confirm_cleanup:
-        description: "Delete old build-* releases/tags and all Actions artifacts except Build #29"
-        required: true
-        type: choice
-        options:
-          - NO
-          - YES_DELETE_OLD
 
 permissions:
   contents: write
@@ -17,7 +9,6 @@ permissions:
 
 jobs:
   cleanup:
-    if: ${{ inputs.confirm_cleanup == 'YES_DELETE_OLD' }}
     runs-on: ubuntu-latest
     steps:
       - name: Delete old build releases and their tags
