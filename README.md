@@ -37,7 +37,9 @@
 ## 三、下载
 
 - GitHub Releases：<https://github.com/mengxianbo/WARP-MASQUE/releases>
-- OpenWrt 24.10 及更早（opkg）IPK：<https://github.com/mengxianbo/WARP-MASQUE/releases/latest/download/warp-masque_1.2.0-1_x86_64.ipk>\n- OpenWrt 25.12.x（apk-tools 3.x）APK v3：<https://github.com/mengxianbo/WARP-MASQUE/releases/latest/download/warp-masque_1.2.0-1_x86_64.apk>\n- 详细安装命令：见仓库根目录 [INSTALL.md](INSTALL.md)。
+- OpenWrt 24.10 及更早（opkg）IPK：<https://github.com/mengxianbo/WARP-MASQUE/releases/latest/download/warp-masque_1.2.0-1_x86_64.ipk>
+- OpenWrt 25.12.x（apk-tools 3.x）APK v3：<https://github.com/mengxianbo/WARP-MASQUE/releases/latest/download/warp-masque_1.2.0-1_x86_64.apk>
+- 详细安装命令：见仓库根目录 [INSTALL.md](INSTALL.md)。
 
 如果最新构建尚未发布，请进入 Releases 页面选择最新成功构建；也可以在 Actions 页面下载构建产物：<https://github.com/mengxianbo/WARP-MASQUE/actions>。
 
@@ -47,16 +49,21 @@
 
     ubus call system board
     cat /etc/openwrt_release
-    opkg print-architecture
-    command -v opkg
+    opkg print-architecture 2>/dev/null || true
+    command -v opkg || true
+    command -v apk || true
 
-确认设备是 x86_64、系统使用 opkg 而不是 apk，并且路由器可以访问 GitHub 和 Cloudflare 注册服务。建议先备份配置：
+确认设备是 x86_64，并根据包管理器选择对应格式：opkg 使用 IPK；OpenWrt 25.12.x 的 apk-tools 3.x 使用 APK。路由器还需能访问 GitHub 和 Cloudflare 注册服务。建议先备份配置：
 
     sysupgrade -b /tmp/openwrt-backup.tar.gz
 
 同时确保有 Proxmox/VNC/串口等本地救援入口。
 
 ## 五、完整安装命令
+
+完整安装、上传、验证、注册、启动和卸载命令已单独整理在 [INSTALL.md](INSTALL.md)。
+
+### OpenWrt 24.10 及更早版本：IPK（opkg）
 
 ### 方法 A：SSH 下载并安装
 
@@ -69,7 +76,16 @@
 
 如果固件软件源没有 luci-base，请先确认固件本身是否安装 LuCI；不要从不匹配的固件源强行安装依赖。
 
-### 方法 B：电脑下载后上传
+### OpenWrt 25.12.x：APK v3（apk-tools 3.x）
+
+    cd /tmp
+    wget -O warp-masque_1.2.0-1_x86_64.apk https://github.com/mengxianbo/WARP-MASQUE/releases/latest/download/warp-masque_1.2.0-1_x86_64.apk
+    apk update
+    apk add --allow-untrusted ./warp-masque_1.2.0-1_x86_64.apk
+
+### 方法 B：电脑下载后上传（IPK）
+
+
 
 1. 在电脑打开 <https://github.com/mengxianbo/WARP-MASQUE/releases>。
 2. 下载 warp-masque_1.2.0-1_x86_64.ipk。
@@ -247,7 +263,9 @@ LuCI 当前有两种设置项：
 
 不是。代理可用和 PassWall 外层连接绕行是两件事。防回环尚未通过实测前，不要将其投入全网代理。
 
-## 十三、源码与构建\n\nGitHub Actions 继续构建原有 IPK，并额外使用 OpenWrt 25.12.0 x86/64 官方 SDK 原生生成 APK v3。APK 与 IPK 使用同一份 usque 二进制、LuCI 页面、配置文件和 init 脚本，仅打包格式与安装包管理器不同。
+## 十三、源码与构建
+
+GitHub Actions 继续构建原有 IPK，并额外使用 OpenWrt 25.12.0 x86/64 官方 SDK 原生生成 APK v3。APK 与 IPK 使用同一份 usque 二进制、LuCI 页面、配置文件和 init 脚本，仅打包格式与安装包管理器不同。
 
 仓库：<https://github.com/mengxianbo/WARP-MASQUE>
 
