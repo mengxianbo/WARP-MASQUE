@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # WARP-MASQUE OpenWrt package build workflow.
-# Rebuild trigger: 2026-11-24
-name: Build WARP-MASQUE OpenWrt package
+# Existing IPK build is preserved; an OpenWrt 25.12 APK v3 package is added.
+name: Build WARP-MASQUE OpenWrt packages
+
 on:
   workflow_dispatch:
   push:
@@ -10,24 +11,29 @@ on:
       - 'openwrt/**'
       - 'luci/**'
       - 'README.md'
+      - 'INSTALL.md'
       - 'LICENSE'
       - 'THIRD_PARTY_NOTICES.md'
       - '.github/workflows/build.yml'
   schedule:
     - cron: '20 3 * * 1'
+
 permissions:
   contents: write
+
 jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.26.3'
           cache: false
+
       - name: Build upstream usque for OpenWrt x86_64
         env:
           GOOS: linux
@@ -38,7 +44,8 @@ jobs:
           git clone --depth 1 --branch v1.5.0 https://github.com/Diniboy1123/usque.git upstream
           cd upstream
           go build -trimpath -ldflags="-s -w" -o "$GITHUB_WORKSPACE/usque" .
-      - name: Assemble OpenWrt IPK
+
+      - name: Assemble existing OpenWrt IPK (unchanged)
         run: |
           set -euxo pipefail
           STAGE="$RUNNER_TEMP/ipk-root"
@@ -71,24 +78,87 @@ jobs:
           tar --numeric-owner --owner=0 --group=0 -czf "$RUNNER_TEMP/data.tar.gz" .
           cd "$RUNNER_TEMP"
           printf '2.0\n' > debian-binary
-          # OpenWrt opkg IPK format is a gzip-compressed tar archive,
-          # NOT the Debian .deb ar archive.
           tar --format=gnu --numeric-owner --owner=0 --group=0 \
             -czf "$GITHUB_WORKSPACE/dist/warp-masque_1.2.0-1_x86_64.ipk" \
             ./debian-binary ./data.tar.gz ./control.tar.gz
           gzip -t "$GITHUB_WORKSPACE/dist/warp-masque_1.2.0-1_x86_64.ipk"
           tar -tzf "$GITHUB_WORKSPACE/dist/warp-masque_1.2.0-1_x86_64.ipk"
           test "$(tar -xOzf "$GITHUB_WORKSPACE/dist/warp-masque_1.2.0-1_x86_64.ipk" ./debian-binary)" = "2.0"
-      - name: Upload IPK artifact
+
+      - name: Install OpenWrt SDK build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zstd build-essential libncurses-dev gawk gettext \
+            unzip file python3 rsync
+
+      - name: Download and verify official OpenWrt 25.12.0 x86/64 SDK
+        run: |
+          set -euxo pipefail
+          SDK_FILE="openwrt-sdk-25.12.0-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst"
+          SDK_URL="https://downloads.openwrt.org/releases/25.12.0/targets/x86/64/$SDK_FILE"
+          SDK_SHA256="9f371906ce6d2f95418f69fac06df58bf9df0ffc4abed6206c30f1b547fcfc12"
+          curl -fL "$SDK_URL" -o "$RUNNER_TEMP/$SDK_FILE"
+          echo "$SDK_SHA256  $RUNNER_TEMP/$SDK_FILE" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/openwrt-sdk"
+          tar --zstd -xf "$RUNNER_TEMP/$SDK_FILE" -C "$RUNNER_TEMP/openwrt-sdk" --strip-components=1
+          echo "OPENWRT_SDK=$RUNNER_TEMP/openwrt-sdk" >> "$GITHUB_ENV"
+
+      - name: Prepare native OpenWrt APK package from the same project files
+        run: |
+          set -euxo pipefail
+          PKG="$OPENWRT_SDK/package/warp-masque"
+          mkdir -p "$PKG/files/usr/bin" "$PKG/files/etc/config" "$PKG/files/etc/init.d"
+          mkdir -p "$PKG/files/usr/libexec" "$PKG/files/usr/lib/lua/luci/controller"
+          mkdir -p "$PKG/files/usr/lib/lua/luci/model/cbi" "$PKG/files/usr/share/licenses/warp-masque"
+          install -m 0755 usque "$PKG/files/usr/bin/usque"
+          install -m 0644 openwrt/files/warp-masque.config "$PKG/files/etc/config/warp-masque"
+          install -m 0755 openwrt/files/warp-masque.init "$PKG/files/etc/init.d/warp-masque"
+          install -m 0755 openwrt/files/warp-masquectl "$PKG/files/usr/libexec/warp-masque"
+          install -m 0644 luci/controller/warp-masque.lua "$PKG/files/usr/lib/lua/luci/controller/warp-masque.lua"
+          install -m 0644 luci/model/cbi/warp-masque.lua "$PKG/files/usr/lib/lua/luci/model/cbi/warp-masque.lua"
+          install -m 0644 LICENSE "$PKG/files/usr/share/licenses/warp-masque/LICENSE"
+          install -m 0644 THIRD_PARTY_NOTICES.md "$PKG/files/usr/share/licenses/warp-masque/THIRD_PARTY_NOTICES.md"
+          cp openwrt/apk/Makefile "$PKG/Makefile"
+
+      - name: Build native OpenWrt 25.12 APK v3 package
+        working-directory: ${{ env.OPENWRT_SDK }}
+        run: |
+          set -euxo pipefail
+          ./scripts/feeds update -a
+          ./scripts/feeds install -p luci luci-base
+          make defconfig
+          make package/warp-masque/compile V=s
+          APK="$(find bin/packages -type f -name 'warp-masque-*.apk' -print -quit)"
+          test -n "$APK"
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+          cp "$APK" "$GITHUB_WORKSPACE/dist/warp-masque_1.2.0-1_x86_64.apk"
+          file "$GITHUB_WORKSPACE/dist/warp-masque_1.2.0-1_x86_64.apk"
+          test -s "$GITHUB_WORKSPACE/dist/warp-masque_1.2.0-1_x86_64.apk"
+          sha256sum "$GITHUB_WORKSPACE/dist/"* > "$GITHUB_WORKSPACE/dist/SHA256SUMS.txt"
+
+      - name: Verify both package files exist
+        run: |
+          set -euxo pipefail
+          test -s dist/warp-masque_1.2.0-1_x86_64.ipk
+          test -s dist/warp-masque_1.2.0-1_x86_64.apk
+          sha256sum dist/*
+
+      - name: Upload both OpenWrt package formats
         uses: actions/upload-artifact@v4
         with:
-          name: warp-masque-openwrt-x86_64
-          path: dist/*.ipk
-      - name: Publish GitHub Release
+          name: warp-masque-openwrt-x86_64-ipk-and-apk
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release with IPK and APK
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
           name: WARP-MASQUE build ${{ github.run_number }}
-          files: dist/*.ipk
+          files: |
+            dist/warp-masque_1.2.0-1_x86_64.ipk
+            dist/warp-masque_1.2.0-1_x86_64.apk
+            dist/SHA256SUMS.txt
           generate_release_notes: true
